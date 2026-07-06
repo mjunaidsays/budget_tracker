@@ -6,7 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input }  from '@/components/ui/input';
 import { Label }  from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EXPENSE_CATEGORIES } from '@/lib/categories';
 import { ExpenseCategory } from '@/lib/types';
 
@@ -19,10 +19,13 @@ interface Props {
   onSubmit: (category: ExpenseCategory, limit: number) => void;
 }
 
+const CUSTOM_SENTINEL = '__custom__';
+
 export function BudgetForm({ open, onOpenChange, existingBudget, excludeCategories = [], onSubmit }: Props) {
-  const [category, setCategory] = useState<ExpenseCategory>('food-dining');
-  const [limit,    setLimit]    = useState('');
-  const [errors,   setErrors]   = useState<Record<string, string>>({});
+  const [category,   setCategory]   = useState<ExpenseCategory>('food-dining');
+  const [customName, setCustomName] = useState('');
+  const [limit,      setLimit]      = useState('');
+  const [errors,     setErrors]     = useState<Record<string, string>>({});
 
   const availableCategories = EXPENSE_CATEGORIES.filter(
     c => !excludeCategories.includes(c.id as ExpenseCategory) || c.id === existingBudget?.category
@@ -30,7 +33,15 @@ export function BudgetForm({ open, onOpenChange, existingBudget, excludeCategori
 
   useEffect(() => {
     if (open) {
-      setCategory(existingBudget?.category ?? 'food-dining');
+      const cat = existingBudget?.category ?? 'food-dining';
+      const isKnown = EXPENSE_CATEGORIES.some(c => c.id === cat);
+      if (existingBudget && !isKnown) {
+        setCategory(CUSTOM_SENTINEL as ExpenseCategory);
+        setCustomName(cat);
+      } else {
+        setCategory((isKnown ? cat : 'food-dining') as ExpenseCategory);
+        setCustomName('');
+      }
       setLimit(existingBudget ? String(existingBudget.limit) : '');
       setErrors({});
     }
@@ -40,9 +51,11 @@ export function BudgetForm({ open, onOpenChange, existingBudget, excludeCategori
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!limit || isNaN(+limit) || +limit <= 0) errs.limit = 'Enter a valid amount';
+    const isCustom = category === CUSTOM_SENTINEL;
+    if (isCustom && !customName.trim()) errs.category = 'Enter a category name';
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
-    onSubmit(category, parseFloat(limit));
+    onSubmit((isCustom ? customName.trim() : category) as ExpenseCategory, parseFloat(limit));
   }
 
   return (
@@ -54,7 +67,16 @@ export function BudgetForm({ open, onOpenChange, existingBudget, excludeCategori
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label>Category</Label>
-            <Select value={category} onValueChange={v => v && setCategory(v as ExpenseCategory)} disabled={!!existingBudget}>
+            <Select
+              value={category}
+              onValueChange={v => {
+                if (v) {
+                  setCategory(v as ExpenseCategory);
+                  if (v !== CUSTOM_SENTINEL) setCustomName('');
+                }
+              }}
+              disabled={!!existingBudget}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -62,8 +84,26 @@ export function BudgetForm({ open, onOpenChange, existingBudget, excludeCategori
                 {availableCategories.map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
                 ))}
+                <SelectSeparator />
+                <SelectItem value={CUSTOM_SENTINEL}>Custom…</SelectItem>
               </SelectContent>
             </Select>
+
+            {category === CUSTOM_SENTINEL && (
+              <div className="space-y-1.5 mt-2">
+                <Input
+                  autoFocus
+                  placeholder="e.g. Hobbies"
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  disabled={!!existingBudget}
+                  className={errors.category ? 'border-destructive' : ''}
+                />
+                {errors.category && (
+                  <p className="text-xs text-destructive">{errors.category}</p>
+                )}
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="limit">Monthly Limit (USD)</Label>

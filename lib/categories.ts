@@ -28,6 +28,13 @@ export const CATEGORIES: CategoryDefinition[] = [
 export const EXPENSE_CATEGORIES = CATEGORIES.filter(c => c.type === 'expense') as CategoryDefinition[];
 export const INCOME_CATEGORIES  = CATEGORIES.filter(c => c.type === 'income')  as CategoryDefinition[];
 
-export function getCategoryDef(id: Category): CategoryDefinition {
-  return CATEGORIES.find(c => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
+export function getCategoryDef(id: string): CategoryDefinition {
+  return CATEGORIES.find(c => c.id === id) ?? {
+    id: id as Category,
+    label: id,
+    icon: 'Tag',
+    color: '#94a3b8',
+    bgColor: 'bg-slate-100 dark:bg-slate-900/30',
+    type: 'expense',
+  };
 }

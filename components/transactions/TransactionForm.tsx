@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn, today } from '@/lib/utils';
 import { Transaction, TransactionType, Category } from '@/lib/types';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/lib/categories';
+import { useBudgets } from '@/hooks/useBudgets';
 
 interface Props {
   open: boolean;
@@ -28,8 +29,14 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
   const [date,        setDate]        = useState('');
   const [errors,      setErrors]      = useState<Record<string, string>>({});
 
+  const { budgets, fetchBudgets } = useBudgets();
+  const customExpenseCategories = Array.from(new Set(
+    budgets.map(b => b.category).filter(cat => !EXPENSE_CATEGORIES.some(c => c.id === cat))
+  ));
+
   useEffect(() => {
     if (open) {
+      fetchBudgets();
       if (mode === 'edit' && transaction) {
         setType(transaction.type);
         setCategory(transaction.category);
@@ -45,7 +52,7 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
       }
       setErrors({});
     }
-  }, [open, mode, transaction]);
+  }, [open, mode, transaction, fetchBudgets]);
 
   useEffect(() => {
     if (type === 'expense') setCategory('food-dining');
@@ -138,6 +145,9 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
               <SelectContent>
                 {categories.map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                ))}
+                {type === 'expense' && customExpenseCategories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

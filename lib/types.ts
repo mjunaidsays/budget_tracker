@@ -10,7 +10,8 @@ export type ExpenseCategory =
   | 'housing-rent'
   | 'travel'
   | 'education'
-  | 'other';
+  | 'other'
+  | (string & {});
 
 export type IncomeCategory = 'salary' | 'freelance-business' | 'other-income';
 

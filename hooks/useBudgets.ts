@@ -95,5 +95,6 @@ export function useBudgets() {
     getBudgetsWithUsage,
     clearAll,
     seedBudgets,
+    fetchBudgets,
   };
 }
