@@ -24,6 +24,8 @@ function toTransaction(row: Record<string, unknown>): Transaction {
   };
 }
 
+const TX_CHANGED = 'fintracker:transactions-changed';
+
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading,    setIsLoading]    = useState(true);
@@ -40,6 +42,13 @@ export function useTransactions() {
   }, []);
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+
+  // Re-fetch whenever any hook instance mutates data (e.g. AppShell adds, page list updates)
+  useEffect(() => {
+    const handler = () => fetchTransactions();
+    window.addEventListener(TX_CHANGED, handler);
+    return () => window.removeEventListener(TX_CHANGED, handler);
+  }, [fetchTransactions]);
 
   const addTransaction = useCallback(
     async (data: Omit<Transaction, 'id' | 'createdAt'>) => {
@@ -63,6 +72,7 @@ export function useTransactions() {
         description: tx.description,
         date:        tx.date,
       });
+      window.dispatchEvent(new CustomEvent(TX_CHANGED));
     },
     []
   );
@@ -80,6 +90,7 @@ export function useTransactions() {
       if (data.date        !== undefined) dbData.date        = data.date;
 
       await supabase.from('transactions').update(dbData).eq('id', id);
+      window.dispatchEvent(new CustomEvent(TX_CHANGED));
     },
     []
   );
@@ -89,6 +100,7 @@ export function useTransactions() {
       setTransactions(prev => prev.filter(t => t.id !== id));
       const supabase = createClient();
       await supabase.from('transactions').delete().eq('id', id);
+      window.dispatchEvent(new CustomEvent(TX_CHANGED));
     },
     []
   );
@@ -117,6 +129,7 @@ export function useTransactions() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     await supabase.from('transactions').delete().eq('user_id', user.id);
+    window.dispatchEvent(new CustomEvent(TX_CHANGED));
   }, []);
 
   const seedData = useCallback(async () => {
@@ -138,7 +151,7 @@ export function useTransactions() {
     }));
 
     await supabase.from('transactions').insert(rows);
-    await fetchTransactions();
+    window.dispatchEvent(new CustomEvent(TX_CHANGED));
   }, [fetchTransactions]);
 
   return {
