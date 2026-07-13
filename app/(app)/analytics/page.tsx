@@ -11,6 +11,7 @@ import { TrendingDown, TrendingUp, Calendar, Tag } from 'lucide-react';
 const MonthlyOverviewChart   = dynamic(() => import('@/components/analytics/MonthlyOverviewChart').then(m => ({ default: m.MonthlyOverviewChart })), { ssr: false });
 const CategoryBreakdownChart = dynamic(() => import('@/components/analytics/CategoryBreakdownChart').then(m => ({ default: m.CategoryBreakdownChart })), { ssr: false });
 const SpendingTrendChart     = dynamic(() => import('@/components/analytics/SpendingTrendChart').then(m => ({ default: m.SpendingTrendChart })), { ssr: false });
+const DailySpendingChart     = dynamic(() => import('@/components/analytics/DailySpendingChart').then(m => ({ default: m.DailySpendingChart })), { ssr: false });
 
 export default function AnalyticsPage() {
   const [month, setMonth] = useState(getCurrentMonth());
@@ -100,17 +101,17 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Expense Breakdown</CardTitle>
-            <p className="text-xs text-muted-foreground">{formatMonth(month)}</p>
-          </CardHeader>
-          <CardContent>
-            <CategoryBreakdownChart data={categoryData} total={stats.expenses} />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Expense Breakdown</CardTitle>
+          <p className="text-xs text-muted-foreground">{formatMonth(month)}</p>
+        </CardHeader>
+        <CardContent>
+          <CategoryBreakdownChart data={categoryData} total={stats.expenses} />
+        </CardContent>
+      </Card>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Cumulative Spending</CardTitle>
@@ -118,6 +119,16 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <SpendingTrendChart data={dailyData} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Daily Spending</CardTitle>
+            <p className="text-xs text-muted-foreground">{formatMonth(month)}</p>
+          </CardHeader>
+          <CardContent>
+            <DailySpendingChart data={dailyData} />
           </CardContent>
         </Card>
       </div>
