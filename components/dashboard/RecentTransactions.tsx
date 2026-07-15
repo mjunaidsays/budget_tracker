@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Transaction } from '@/lib/types';
@@ -15,6 +16,7 @@ interface Props {
 
 export function RecentTransactions({ transactions, isLoading }: Props) {
   const recent = transactions.slice(0, 8);
+  const reduceMotion = useReducedMotion();
 
   return (
     <Card>
@@ -42,24 +44,34 @@ export function RecentTransactions({ transactions, isLoading }: Props) {
           <p className="text-sm text-muted-foreground text-center py-6">No transactions yet</p>
         ) : (
           <div className="space-y-0.5">
-            {recent.map(t => {
-              const def = getCategoryDef(t.category);
-              const Icon = (Icons as unknown as Record<string, React.ElementType>)[def.icon] ?? Icons.Circle;
-              return (
-                <div key={t.id} className="flex items-center gap-3 py-2.5 border-b border-border/40 last:border-0">
-                  <div className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', def.bgColor)}>
-                    <Icon className="w-4 h-4" style={{ color: def.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{t.description}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
-                  </div>
-                  <span className={cn('text-sm font-semibold shrink-0', t.type === 'income' ? 'text-emerald-500' : 'text-rose-500')}>
-                    {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
-                  </span>
-                </div>
-              );
-            })}
+            <AnimatePresence initial={false}>
+              {recent.map(t => {
+                const def = getCategoryDef(t.category);
+                const Icon = (Icons as unknown as Record<string, React.ElementType>)[def.icon] ?? Icons.Circle;
+                return (
+                  <motion.div
+                    key={t.id}
+                    layout={!reduceMotion}
+                    initial={reduceMotion ? false : { opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, x: -8 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="flex items-center gap-3 py-2.5 border-b border-border/40 last:border-0 rounded-md hover:bg-muted/40 -mx-1 px-1 transition-colors"
+                  >
+                    <div className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', def.bgColor)}>
+                      <Icon className="w-4 h-4" style={{ color: def.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{t.description}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(t.date)}</p>
+                    </div>
+                    <span className={cn('text-sm font-semibold shrink-0', t.type === 'income' ? 'text-emerald-500' : 'text-rose-500')}>
+                      {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount)}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </CardContent>

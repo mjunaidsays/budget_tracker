@@ -1,0 +1,20 @@
+'use client';
+import { Toaster } from 'sonner';
+import { useTheme } from 'next-themes';
+
+export function ToastProvider() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      position="bottom-right"
+      richColors
+      closeButton
+      theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+      toastOptions={{
+        classNames: {
+          toast: 'rounded-xl border border-border shadow-lg',
+        },
+      }}
+    />
+  );
+}

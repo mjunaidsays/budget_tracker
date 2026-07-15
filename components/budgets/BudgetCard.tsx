@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Trash2, Pencil } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BudgetWithUsage } from '@/lib/types';
@@ -18,6 +19,7 @@ interface Props {
 export function BudgetCard({ budget, onDelete, onUpdate }: Props) {
   const [editOpen,   setEditOpen]   = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   const Icon = (Icons as unknown as Record<string, React.ElementType>)[budget.icon] ?? Icons.Circle;
 
@@ -41,11 +43,19 @@ export function BudgetCard({ budget, onDelete, onUpdate }: Props) {
                 <p className="text-xs text-muted-foreground">Monthly limit</p>
               </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => setEditOpen(true)} className="p-1 rounded hover:bg-muted transition-colors">
+            <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
+              <button
+                onClick={() => setEditOpen(true)}
+                aria-label={`Edit ${budget.label} budget`}
+                className="p-1.5 rounded hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors"
+              >
                 <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-              <button onClick={() => setDeleteOpen(true)} className="p-1 rounded hover:bg-destructive/10 transition-colors">
+              <button
+                onClick={() => setDeleteOpen(true)}
+                aria-label={`Delete ${budget.label} budget`}
+                className="p-1.5 rounded hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive transition-colors"
+              >
                 <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
               </button>
             </div>
@@ -59,9 +69,11 @@ export function BudgetCard({ budget, onDelete, onUpdate }: Props) {
               </span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className={cn('h-full rounded-full transition-all', progressColor)}
-                style={{ width: `${Math.min(budget.percentageUsed, 100)}%` }}
+              <motion.div
+                className={cn('h-full rounded-full transition-colors', progressColor)}
+                initial={reduceMotion ? false : { width: 0 }}
+                animate={{ width: `${Math.min(budget.percentageUsed, 100)}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
               />
             </div>
           </div>

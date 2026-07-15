@@ -10,7 +10,7 @@ export function generateSeedTransactions(): Transaction[] {
   function tx(type: Transaction['type'], category: Transaction['category'], amount: number, description: string, daysAgo: number): Transaction {
     counter++;
     const date = d(daysAgo);
-    return { id: `seed-${counter}`, type, category, amount, description, date, createdAt: date + 'T10:00:00Z' };
+    return { id: `seed-${counter}`, type, category, amount, description, date, createdAt: date + 'T10:00:00Z', fundedBySavings: false };
   }
 
   return [

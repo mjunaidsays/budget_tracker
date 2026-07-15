@@ -1,16 +1,20 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Check, Sparkles, PiggyBank } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button }   from '@/components/ui/button';
 import { Input }    from '@/components/ui/input';
 import { Label }    from '@/components/ui/label';
+import { Switch }   from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn, today } from '@/lib/utils';
 import { Transaction, TransactionType, Category } from '@/lib/types';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/lib/categories';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategoryDef } from '@/lib/categories';
 import { useBudgets } from '@/hooks/useBudgets';
+import { useCategoryRules } from '@/hooks/useCategoryRules';
 
 interface Props {
   open: boolean;
@@ -18,18 +22,23 @@ interface Props {
   mode: 'add' | 'edit';
   transaction?: Transaction;
   onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  /** Pre-checks "Paid from savings" when opening in add mode — used by the Savings page's quick action. */
+  initialFundedBySavings?: boolean;
 }
 
 
-export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmit }: Props) {
+export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmit, initialFundedBySavings }: Props) {
   const [type,        setType]        = useState<TransactionType>('expense');
   const [category,    setCategory]    = useState<Category>('food-dining');
   const [amount,      setAmount]      = useState('');
   const [description, setDescription] = useState('');
   const [date,        setDate]        = useState('');
+  const [fundedBySavings, setFundedBySavings] = useState(false);
   const [errors,      setErrors]      = useState<Record<string, string>>({});
+  const [justSubmitted, setJustSubmitted] = useState(false);
 
   const { budgets, fetchBudgets } = useBudgets();
+  const { fetchRules, recordCorrection, suggest } = useCategoryRules();
   const customExpenseCategories = Array.from(new Set(
     budgets.map(b => b.category).filter(cat => !EXPENSE_CATEGORIES.some(c => c.id === cat))
   ));
@@ -37,29 +46,53 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
   useEffect(() => {
     if (open) {
       fetchBudgets();
+      fetchRules();
       if (mode === 'edit' && transaction) {
         setType(transaction.type);
         setCategory(transaction.category);
         setAmount(String(transaction.amount));
         setDescription(transaction.description);
         setDate(transaction.date);
+        setFundedBySavings(transaction.fundedBySavings);
       } else {
         setType('expense');
         setCategory('food-dining');
         setAmount('');
         setDescription('');
         setDate(today());
+        setFundedBySavings(!!initialFundedBySavings);
       }
       setErrors({});
+      setJustSubmitted(false);
     }
-  }, [open, mode, transaction, fetchBudgets]);
+  }, [open, mode, transaction, fetchBudgets, fetchRules, initialFundedBySavings]);
 
   useEffect(() => {
+    if (mode !== 'add') return; // don't fight the user's existing choice when editing
     if (type === 'expense') setCategory('food-dining');
     else setCategory('salary');
-  }, [type]);
+  }, [type, mode]);
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+
+  // Debounced, local, rule-based category suggestion — no AI. Never auto-applies.
+  const [suggestion, setSuggestion] = useState<{ category: Category; confidence: number } | null>(null);
+  useEffect(() => {
+    if (!description.trim()) { setSuggestion(null); return; }
+    const timer = setTimeout(() => {
+      setSuggestion(suggest(description, type));
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [description, type]);
+
+  const suggestedCategoryVisible = useMemo(() => {
+    if (!suggestion) return false;
+    return (
+      categories.some(c => c.id === suggestion.category) ||
+      customExpenseCategories.includes(suggestion.category)
+    );
+  }, [suggestion, categories, customExpenseCategories]);
 
   function validate() {
     const e: Record<string, string> = {};
@@ -73,8 +106,22 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
-    onSubmit({ type, category, amount: parseFloat(amount), description: description.trim(), date });
+    if (!validate() || justSubmitted) return;
+
+    const data = {
+      type,
+      category,
+      amount: parseFloat(amount),
+      description: description.trim(),
+      date,
+      fundedBySavings: type === 'expense' && fundedBySavings,
+    };
+
+    // Feeds the local, deterministic auto-categorization learning loop (no AI/external calls).
+    recordCorrection(data.description, data.category, data.type);
+
+    setJustSubmitted(true);
+    window.setTimeout(() => onSubmit(data), 260);
   }
 
   return (
@@ -117,6 +164,22 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
               className={errors.description ? 'border-destructive' : ''}
             />
             {errors.description && <p className="text-xs text-destructive">{errors.description}</p>}
+            <AnimatePresence>
+              {suggestion && suggestion.category !== category && (
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => setCategory(suggestion.category)}
+                  className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline"
+                >
+                  <Sparkles className="w-3 h-3 shrink-0" />
+                  Suggested: {getCategoryDef(suggestion.category).label} — apply?
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Amount */}
@@ -149,10 +212,33 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
                 {type === 'expense' && customExpenseCategories.map(cat => (
                   <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}
+                {suggestion && !suggestedCategoryVisible && (
+                  <SelectItem value={suggestion.category}>
+                    {getCategoryDef(suggestion.category).label}
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
             {errors.category && <p className="text-xs text-destructive">{errors.category}</p>}
           </div>
+
+          {/* Paid from savings (expense only) */}
+          {type === 'expense' && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <PiggyBank className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0" />
+                <div className="min-w-0">
+                  <Label htmlFor="funded-by-savings" className="cursor-pointer">Paid from savings</Label>
+                  <p className="text-xs text-muted-foreground truncate">Draws from your savings instead of this month&apos;s budget</p>
+                </div>
+              </div>
+              <Switch
+                id="funded-by-savings"
+                checked={fundedBySavings}
+                onCheckedChange={v => setFundedBySavings(!!v)}
+              />
+            </div>
+          )}
 
           {/* Date */}
           <div className="space-y-1.5">
@@ -169,15 +255,34 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={justSubmitted}>
+              Cancel
+            </Button>
             <Button
               type="submit"
+              disabled={justSubmitted}
               className={cn(
                 type === 'expense' ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-500 hover:bg-emerald-600',
-                'text-white'
+                'text-white min-w-20 disabled:opacity-100'
               )}
             >
-              {mode === 'add' ? 'Add' : 'Save'}
+              <AnimatePresence mode="wait" initial={false}>
+                {justSubmitted ? (
+                  <motion.span
+                    key="check"
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" /> {mode === 'add' ? 'Added' : 'Saved'}
+                  </motion.span>
+                ) : (
+                  <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    {mode === 'add' ? 'Add' : 'Save'}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </Button>
           </DialogFooter>
         </form>
