@@ -2,10 +2,13 @@
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useBudgets } from '@/hooks/useBudgets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { InsightCardsSection } from '@/components/dashboard/InsightCardsSection';
 import { getCurrentMonth, formatMonth, formatCurrency } from '@/lib/utils';
+import { generateInsights } from '@/lib/insights';
 import { TrendingDown, TrendingUp, Calendar, Tag } from 'lucide-react';
 
 const MonthlyOverviewChart   = dynamic(() => import('@/components/analytics/MonthlyOverviewChart').then(m => ({ default: m.MonthlyOverviewChart })), { ssr: false });
@@ -17,6 +20,7 @@ export default function AnalyticsPage() {
   const [month, setMonth] = useState(getCurrentMonth());
 
   const {
+    transactions,
     isLoading,
     getMonthlyStats,
     getCategoryBreakdown,
@@ -25,6 +29,7 @@ export default function AnalyticsPage() {
     getTopCategory,
     getAvgDailySpend,
   } = useTransactions();
+  const { budgets } = useBudgets();
 
   const stats        = getMonthlyStats(month);
   const categoryData = getCategoryBreakdown(month, 'expense');
@@ -32,6 +37,7 @@ export default function AnalyticsPage() {
   const dailyData    = getDailySpending(month);
   const topCategory  = getTopCategory(month);
   const avgDaily     = getAvgDailySpend(month);
+  const monthInsights = generateInsights(transactions, budgets, month);
 
   const statCards = [
     {
@@ -132,6 +138,8 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <InsightCardsSection insights={monthInsights} isLoading={isLoading} />
     </div>
   );
 }

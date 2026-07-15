@@ -7,6 +7,9 @@ import { getCategoryDef } from '@/lib/categories';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { TransactionForm } from './TransactionForm';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { useBudgets } from '@/hooks/useBudgets';
+import { useTransactions } from '@/hooks/useTransactions';
+import { getBudgetWarningForTransaction, notifyBudgetWarning } from '@/lib/notifications';
 
 interface Props {
   transaction: Transaction;
@@ -17,6 +20,8 @@ interface Props {
 export function TransactionItem({ transaction, onUpdate, onDelete }: Props) {
   const [editOpen,   setEditOpen]   = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { budgets } = useBudgets();
+  const { transactions } = useTransactions();
 
   const def     = getCategoryDef(transaction.category);
   const IconComp = (Icons as unknown as Record<string, React.ElementType>)[def.icon] ?? Icons.Circle;
@@ -41,16 +46,18 @@ export function TransactionItem({ transaction, onUpdate, onDelete }: Props) {
           {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
         </span>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity shrink-0">
           <button
             onClick={() => setEditOpen(true)}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={`Edit ${transaction.description}`}
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setDeleteOpen(true)}
-            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+            aria-label={`Delete ${transaction.description}`}
+            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -64,6 +71,13 @@ export function TransactionItem({ transaction, onUpdate, onDelete }: Props) {
         transaction={transaction}
         onSubmit={data => {
           onUpdate(transaction.id, data);
+          notifyBudgetWarning(
+            getBudgetWarningForTransaction(
+              data,
+              budgets,
+              transactions.map(t => (t.id === transaction.id ? { ...t, ...data } : t))
+            )
+          );
           setEditOpen(false);
         }}
       />

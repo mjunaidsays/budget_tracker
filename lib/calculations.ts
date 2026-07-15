@@ -1,5 +1,5 @@
 import { format, parseISO, getDaysInMonth } from 'date-fns';
-import { Transaction, Budget, MonthlySummary, CategorySummary, BudgetWithUsage, DailySpending, TransactionType } from './types';
+import { Transaction, Budget, MonthlySummary, CategorySummary, BudgetWithUsage, DailySpending, TransactionType, SavingsGoal, SafeToSpend, BudgetWarning, SavingsSummary } from './types';
 import { getCategoryDef } from './categories';
 import { getPastMonths, formatMonthShort } from './utils';
 
@@ -98,4 +98,90 @@ export function getAverageDailySpend(transactions: Transaction[], month: string)
     : getDaysInMonth(parseISO(month + '-01'));
   const { expenses } = getMonthlyStats(transactions, month);
   return daysElapsed > 0 ? expenses / daysElapsed : 0;
+}
+
+/**
+ * Expenses NOT paid out of savings — i.e. money that actually left this
+ * month's income. Purchases marked `fundedBySavings` still show up everywhere
+ * else (category totals, budgets, history) for a full "every penny" record,
+ * but they draw down accumulated savings instead of this month's cash.
+ */
+export function getNonSavingsExpenses(transactions: Transaction[], month: string): number {
+  return transactions
+    .filter(t => t.type === 'expense' && t.date.startsWith(month) && !t.fundedBySavings)
+    .reduce((s, t) => s + t.amount, 0);
+}
+
+/**
+ * Two complementary "how much can I spend" numbers:
+ * - plannedRemaining: income minus the FULL allocated budget (not what's spent yet)
+ *   minus the savings target — stable across the month, reinforces the budget plan.
+ * - cashRemaining: income minus ACTUAL spend so far (excluding anything paid from
+ *   savings) minus the savings target — what's physically left right now.
+ */
+export function getSafeToSpend(
+  transactions: Transaction[],
+  budgets: Budget[],
+  savingsGoal: SavingsGoal | undefined,
+  month: string
+): SafeToSpend {
+  const { income } = getMonthlyStats(transactions, month);
+  const nonSavingsExpenses = getNonSavingsExpenses(transactions, month);
+  const monthBudgets = budgets.filter(b => b.month === month);
+  const totalBudgeted = monthBudgets.reduce((s, b) => s + b.limit, 0);
+  const savingsTarget = savingsGoal?.target ?? 0;
+
+  return {
+    plannedRemaining: income - totalBudgeted - savingsTarget,
+    cashRemaining: income - nonSavingsExpenses - savingsTarget,
+    hasBudgets: monthBudgets.length > 0,
+    hasSavingsGoal: !!savingsGoal,
+    savingsTarget,
+  };
+}
+
+/**
+ * How much a given month actually contributed to savings: whichever is larger
+ * of an explicitly-logged "already set aside" amount, or the implied leftover
+ * (income minus non-savings expenses) for that month.
+ */
+export function getMonthlySavedAmount(transactions: Transaction[], goal: SavingsGoal, month: string): number {
+  const { income } = getMonthlyStats(transactions, month);
+  const nonSavingsExpenses = getNonSavingsExpenses(transactions, month);
+  return Math.max(goal.savedAside, income - nonSavingsExpenses);
+}
+
+/**
+ * Running lifetime savings total: every month that has a savings goal
+ * contributes its saved amount, and every savings-funded purchase (any month,
+ * any category) draws the running total back down. No AI — plain arithmetic
+ * over the user's own transaction/goal history.
+ */
+export function getTotalSavings(transactions: Transaction[], savingsGoals: SavingsGoal[]): SavingsSummary {
+  const totalContributed = savingsGoals.reduce(
+    (sum, goal) => sum + getMonthlySavedAmount(transactions, goal, goal.month),
+    0
+  );
+  const totalWithdrawn = transactions
+    .filter(t => t.type === 'expense' && t.fundedBySavings)
+    .reduce((s, t) => s + t.amount, 0);
+
+  return {
+    totalSaved: totalContributed - totalWithdrawn,
+    totalContributed,
+    totalWithdrawn,
+  };
+}
+
+/** Budgets at or above 80% usage, ranked worst-first — feeds insight cards + toast warnings. */
+export function getBudgetWarnings(budgetsWithUsage: BudgetWithUsage[]): BudgetWarning[] {
+  return budgetsWithUsage
+    .filter(b => b.percentageUsed >= 80)
+    .map((b): BudgetWarning => ({
+      category: b.category as string,
+      label: b.label,
+      level: b.isOverBudget ? 'critical' : 'warning',
+      percentageUsed: b.percentageUsed,
+    }))
+    .sort((a, b) => b.percentageUsed - a.percentageUsed);
 }

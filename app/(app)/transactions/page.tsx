@@ -1,17 +1,20 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useBudgets } from '@/hooks/useBudgets';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { TransactionFilterBar } from '@/components/transactions/TransactionFilters';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
-import { TransactionFilters } from '@/lib/types';
+import { TransactionFilters, Transaction } from '@/lib/types';
 import { getCurrentMonth, formatCurrency } from '@/lib/utils';
+import { getBudgetWarningForTransaction, notifyBudgetWarning } from '@/lib/notifications';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 export default function TransactionsPage() {
   const { transactions, isLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions();
+  const { budgets } = useBudgets();
   const [formOpen, setFormOpen] = useState(false);
   const [filters, setFilters] = useState<TransactionFilters>({
     month: getCurrentMonth(),
@@ -83,7 +86,13 @@ export default function TransactionsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         mode="add"
-        onSubmit={data => { addTransaction(data); setFormOpen(false); }}
+        onSubmit={data => {
+          addTransaction(data);
+          notifyBudgetWarning(
+            getBudgetWarningForTransaction(data, budgets, [...transactions, data as Transaction])
+          );
+          setFormOpen(false);
+        }}
       />
     </div>
   );

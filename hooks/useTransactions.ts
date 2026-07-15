@@ -21,6 +21,7 @@ function toTransaction(row: Record<string, unknown>): Transaction {
     description: row.description as string,
     date:        row.date as string,
     createdAt:   row.created_at as string,
+    fundedBySavings: Boolean(row.funded_by_savings),
   };
 }
 
@@ -71,6 +72,7 @@ export function useTransactions() {
         amount:      tx.amount,
         description: tx.description,
         date:        tx.date,
+        funded_by_savings: tx.fundedBySavings ?? false,
       });
       window.dispatchEvent(new CustomEvent(TX_CHANGED));
     },
@@ -88,6 +90,7 @@ export function useTransactions() {
       if (data.amount      !== undefined) dbData.amount      = data.amount;
       if (data.description !== undefined) dbData.description = data.description;
       if (data.date        !== undefined) dbData.date        = data.date;
+      if (data.fundedBySavings !== undefined) dbData.funded_by_savings = data.fundedBySavings;
 
       await supabase.from('transactions').update(dbData).eq('id', id);
       window.dispatchEvent(new CustomEvent(TX_CHANGED));
