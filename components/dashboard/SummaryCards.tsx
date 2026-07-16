@@ -2,7 +2,8 @@
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
+import { cn } from '@/lib/utils';
 
 interface Props {
   totalBalance: number;
@@ -48,11 +49,10 @@ const CARDS = [
 ] as const;
 
 export function SummaryCards({ totalBalance, monthlyIncome, monthlyExpenses, savingsRate, isLoading }: Props) {
-  const values = {
-    balance:  formatCurrency(totalBalance),
-    income:   formatCurrency(monthlyIncome),
-    expenses: formatCurrency(monthlyExpenses),
-    savings:  `${savingsRate.toFixed(1)}%`,
+  const rawValues: Record<string, number> = {
+    balance:  totalBalance,
+    income:   monthlyIncome,
+    expenses: monthlyExpenses,
   };
 
   if (isLoading) {
@@ -80,7 +80,9 @@ export function SummaryCards({ totalBalance, monthlyIncome, monthlyExpenses, sav
               </div>
             </div>
             <p className={cn('text-2xl font-bold tracking-tight', valueColor)}>
-              {values[key]}
+              {key === 'savings'
+                ? `${savingsRate.toFixed(1)}%`
+                : <AnimatedNumber value={rawValues[key]} />}
             </p>
           </CardContent>
         </Card>

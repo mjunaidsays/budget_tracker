@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ArrowLeftRight, Target, BarChart3, Moon, Sun, Wallet, LogOut, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, ArrowLeftRight, Target, BarChart3, Moon, Sun, Wallet, LogOut, PiggyBank, FileText } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ const NAV = [
   { href: '/budgets',       icon: Target,          label: 'Budgets'      },
   { href: '/savings',       icon: PiggyBank,       label: 'Savings'      },
   { href: '/analytics',     icon: BarChart3,       label: 'Analytics'    },
+  { href: '/reports',       icon: FileText,        label: 'Reports'      },
 ];
 
 function NavLink({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) {

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 import { getCurrentMonth, formatMonth, formatDate, formatCurrency, cn } from '@/lib/utils';
 import { getSavingsReminder, getBudgetWarningForTransaction, notifyBudgetWarning } from '@/lib/notifications';
 import { getMonthlySavedAmount, getTotalSavings, getNonSavingsExpenses } from '@/lib/calculations';
@@ -78,7 +79,9 @@ export default function SavingsPage() {
               {loading ? (
                 <Skeleton className="h-8 w-36" />
               ) : (
-                <p className="text-3xl font-bold tracking-tight tabular-nums">{formatCurrency(totalSaved)}</p>
+                <p className="text-3xl font-bold tracking-tight tabular-nums">
+                  <AnimatedNumber value={totalSaved} />
+                </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
                 Every month&apos;s contribution added together, minus anything spent from savings
