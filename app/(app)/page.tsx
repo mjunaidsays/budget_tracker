@@ -10,10 +10,13 @@ import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { SafeToSpendCard } from '@/components/dashboard/SafeToSpendCard';
 import { InsightCardsSection } from '@/components/dashboard/InsightCardsSection';
 import { GamificationStrip } from '@/components/dashboard/GamificationStrip';
+import { HealthScoreBadge } from '@/components/dashboard/HealthScoreBadge';
 import { CelebrationBurst } from '@/components/dashboard/CelebrationBurst';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 import { getCurrentMonth } from '@/lib/utils';
 import { getSafeToSpend, getTotalSavings } from '@/lib/calculations';
 import { generateInsights } from '@/lib/insights';
+import { getHealthScore } from '@/lib/healthScore';
 import { getSavingsReminder } from '@/lib/notifications';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Trash2 } from 'lucide-react';
@@ -40,6 +43,7 @@ export default function DashboardPage() {
 
   const [resetOpen, setResetOpen] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const currentMonth = getCurrentMonth();
   const stats        = getMonthlyStats(currentMonth);
@@ -51,6 +55,24 @@ export default function DashboardPage() {
   const safeToSpend  = getSafeToSpend(transactions, budgets, savingsGoal, currentMonth);
   const insights     = generateInsights(transactions, budgets, currentMonth);
   const { totalSaved } = getTotalSavings(transactions, savingsGoals);
+  const healthScore  = getHealthScore(transactions, budgets, savingsGoals, currentMonth, {
+    currentStreakDays: gamificationState.currentStreakDays,
+  });
+
+  const isFullyEmpty = transactions.length === 0 && budgets.length === 0 && savingsGoals.length === 0;
+  const showOnboarding =
+    !isLoading && !savingsLoading && !gamificationLoading && isFullyEmpty && !onboardingDismissed;
+
+  // Read the session-scoped dismiss flag once on mount (guarded for SSR/hydration).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('finpulse:onboarding-dismissed')) setOnboardingDismissed(true);
+  }, []);
+
+  function dismissOnboarding() {
+    if (typeof window !== 'undefined') sessionStorage.setItem('finpulse:onboarding-dismissed', '1');
+    setOnboardingDismissed(true);
+  }
 
   const sorted = [...transactions].sort(
     (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
@@ -103,17 +125,24 @@ export default function DashboardPage() {
 
       <SafeToSpendCard safeToSpend={safeToSpend} totalSaved={totalSaved} isLoading={isLoading || savingsLoading} />
 
-      <GamificationStrip
-        currentStreakDays={gamificationState.currentStreakDays}
-        badges={badges}
-        isLoading={gamificationLoading}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <GamificationStrip
+          currentStreakDays={gamificationState.currentStreakDays}
+          badges={badges}
+          isLoading={gamificationLoading}
+        />
+        <HealthScoreBadge healthScore={healthScore} isLoading={isLoading || gamificationLoading} />
+      </div>
 
       <InsightCardsSection insights={insights} isLoading={isLoading} />
 
       <CelebrationBurst active={celebrating} onComplete={handleCelebrationComplete} />
 
-      {!isLoading && transactions.length === 0 && (
+      {showOnboarding && (
+        <OnboardingWizard onDismiss={dismissOnboarding} onLoadSampleData={handleSeedData} />
+      )}
+
+      {!showOnboarding && !isLoading && transactions.length === 0 && (
         <div className="rounded-xl border-2 border-dashed border-border p-10 text-center">
           <Sparkles className="w-10 h-10 text-violet-400 mx-auto mb-3" />
           <h3 className="font-semibold text-lg mb-1">Welcome to FinTracker!</h3>

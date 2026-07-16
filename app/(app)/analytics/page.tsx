@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InsightCardsSection } from '@/components/dashboard/InsightCardsSection';
-import { getCurrentMonth, formatMonth, formatCurrency } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
+import { getCurrentMonth, formatMonth } from '@/lib/utils';
 import { generateInsights } from '@/lib/insights';
 import { TrendingDown, TrendingUp, Calendar, Tag } from 'lucide-react';
 
@@ -42,21 +43,21 @@ export default function AnalyticsPage() {
   const statCards = [
     {
       label: 'Total Expenses',
-      value: formatCurrency(stats.expenses),
+      rawValue: stats.expenses,
       icon: TrendingDown,
       iconBg:    'bg-rose-100 dark:bg-rose-900/30',
       iconColor: 'text-rose-600 dark:text-rose-400',
     },
     {
       label: 'Total Income',
-      value: formatCurrency(stats.income),
+      rawValue: stats.income,
       icon: TrendingUp,
       iconBg:    'bg-emerald-100 dark:bg-emerald-900/30',
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
     {
       label: 'Avg. Daily Spend',
-      value: formatCurrency(avgDaily),
+      rawValue: avgDaily,
       icon: Calendar,
       iconBg:    'bg-blue-100 dark:bg-blue-900/30',
       iconColor: 'text-blue-600 dark:text-blue-400',
@@ -81,7 +82,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {statCards.map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+        {statCards.map(({ label, value, rawValue, icon: Icon, iconBg, iconColor }) => (
           <Card key={label}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
@@ -90,9 +91,13 @@ export default function AnalyticsPage() {
                   <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
                 </div>
               </div>
-              {isLoading
-                ? <Skeleton className="h-6 w-24" />
-                : <p className="text-xl font-bold tracking-tight truncate">{value}</p>}
+              {isLoading ? (
+                <Skeleton className="h-6 w-24" />
+              ) : rawValue !== undefined ? (
+                <AnimatedNumber value={rawValue} className="text-xl font-bold tracking-tight truncate" />
+              ) : (
+                <p className="text-xl font-bold tracking-tight truncate">{value}</p>
+              )}
             </CardContent>
           </Card>
         ))}

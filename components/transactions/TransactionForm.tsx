@@ -24,10 +24,12 @@ interface Props {
   onSubmit: (data: Omit<Transaction, 'id' | 'createdAt'>) => void;
   /** Pre-checks "Paid from savings" when opening in add mode — used by the Savings page's quick action. */
   initialFundedBySavings?: boolean;
+  /** Defaults the type toggle in add mode. Defaults to 'expense', matching existing behavior when omitted. */
+  initialType?: TransactionType;
 }
 
 
-export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmit, initialFundedBySavings }: Props) {
+export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmit, initialFundedBySavings, initialType }: Props) {
   const [type,        setType]        = useState<TransactionType>('expense');
   const [category,    setCategory]    = useState<Category>('food-dining');
   const [amount,      setAmount]      = useState('');
@@ -55,8 +57,9 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
         setDate(transaction.date);
         setFundedBySavings(transaction.fundedBySavings);
       } else {
-        setType('expense');
-        setCategory('food-dining');
+        const type = initialType ?? 'expense';
+        setType(type);
+        setCategory(type === 'income' ? 'salary' : 'food-dining');
         setAmount('');
         setDescription('');
         setDate(today());
@@ -65,7 +68,7 @@ export function TransactionForm({ open, onOpenChange, mode, transaction, onSubmi
       setErrors({});
       setJustSubmitted(false);
     }
-  }, [open, mode, transaction, fetchBudgets, fetchRules, initialFundedBySavings]);
+  }, [open, mode, transaction, fetchBudgets, fetchRules, initialFundedBySavings, initialType]);
 
   useEffect(() => {
     if (mode !== 'add') return; // don't fight the user's existing choice when editing

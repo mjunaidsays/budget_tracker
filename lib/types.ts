@@ -144,3 +144,30 @@ export interface SavingsSummary {
   totalContributed: number;
   totalWithdrawn: number;
 }
+
+export interface HealthScoreComponent {
+  key: 'budgetAdherence' | 'savingsAchievement' | 'savingsRate' | 'spendingConsistency';
+  label: string;
+  earnedPoints: number;
+  maxPoints: number;
+  /** Present only when points were deducted — a human-readable explanation. */
+  reason?: string;
+}
+
+export interface HealthScore {
+  /** null = not enough data for this month to compute a meaningful score. */
+  score: number | null;
+  grade: string | null;
+  breakdown: HealthScoreComponent[];
+  reasons: string[];
+  hasEnoughData: boolean;
+}
+
+export interface BiggestImprovement {
+  category: string | null;
+  label: string | null;
+  previousAmount: number;
+  currentAmount: number;
+  /** null = no previous-month expense data to compare against. */
+  percentageDecrease: number | null;
+}

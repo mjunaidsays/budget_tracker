@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, LayoutDashboard, ArrowLeftRight, Target, BarChart3, Moon, Sun, Wallet, LogOut, PiggyBank } from 'lucide-react';
+import { Menu, LayoutDashboard, ArrowLeftRight, Target, BarChart3, Moon, Sun, Wallet, LogOut, PiggyBank, FileText } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/budgets',       icon: Target,          label: 'Budgets'      },
   { href: '/savings',       icon: PiggyBank,       label: 'Savings'      },
   { href: '/analytics',     icon: BarChart3,       label: 'Analytics'    },
+  { href: '/reports',       icon: FileText,        label: 'Reports'      },
 ];
 
 export function MobileNav() {
